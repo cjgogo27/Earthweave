@@ -23,7 +23,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx --no-install vite build --config pages/vite.config.mts
+      - run: npx --no-install vite build --config public-atlas/vite.config.mts
+      - name: Check that a fresh browser renders the atlas from the project subpath
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          ln -s "$GITHUB_WORKSPACE/dist-pages" "$RUNNER_TEMP/site/Earthweave"
+          python3 -m http.server 4173 --directory "$RUNNER_TEMP/site" >/dev/null 2>&1 &
+          for attempt in {1..15}; do curl -fsS http://localhost:4173/Earthweave/ >/dev/null && break; sleep 1; done
+          google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=6000 --dump-dom http://localhost:4173/Earthweave/ > "$RUNNER_TEMP/atlas.html"
+          grep -F '进入全景' "$RUNNER_TEMP/atlas.html"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
