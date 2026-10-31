@@ -1,7 +1,7 @@
 import * as T from "three";
-export const controls=["sound","light","weather","cycle","hide"] as const;
+export const controls=["sound","motion","light","weather","cycle","hide"] as const;
 export type PanelAction=typeof controls[number];
-const W=640,H=590,top=115,stride=88;
+const W=640,H=678,top=115,stride=88;
 export function actionAt(u:number,v:number):PanelAction|null{
  const y=(1-v)*H-top,i=Math.floor(y/stride);
  return u*W>=24&&u*W<=W-24&&i>=0&&i<controls.length&&y-i*stride<75?controls[i]:null;
@@ -21,11 +21,11 @@ export function createXRPanel(scene:T.Scene){
   mesh.position.copy(pos).addScaledVector(dir,1.35);mesh.position.y-=.15;
   mesh.lookAt(pos.x,mesh.position.y,pos.z);mesh.updateMatrixWorld(true);mesh.visible=true;
  }
- function draw(title:string,hint:string,labels:string[]){
-  const key=labels.join("|")+hint;if(key===previous)return;previous=key;
+ function draw(title:string,hint:string,actions:Record<PanelAction,string>){
+  const labels=controls.map(action=>actions[action]);const key=labels.join("|")+hint;if(key===previous)return;previous=key;
   ctx!.fillStyle="#12261e";ctx!.fillRect(0,0,W,H);ctx!.fillStyle="#d8f3dd";ctx!.font="bold 37px system-ui,sans-serif";ctx!.fillText(title,26,50);
   ctx!.font="23px system-ui,sans-serif";ctx!.fillStyle="#a9c5b7";ctx!.fillText(hint,27,92);
-  labels.forEach((label,i)=>{const y=top+i*stride;ctx!.fillStyle=i===4?"#234237":"#305648";ctx!.fillRect(24,y,W-48,75);ctx!.fillStyle="#edfaef";ctx!.font="30px system-ui,sans-serif";ctx!.fillText(label,48,y+48)});
+  labels.forEach((label,i)=>{const y=top+i*stride;ctx!.fillStyle=controls[i]==="hide"?"#234237":"#305648";ctx!.fillRect(24,y,W-48,75);ctx!.fillStyle="#edfaef";ctx!.font="30px system-ui,sans-serif";ctx!.fillText(label,48,y+48)});
   tex.needsUpdate=true;
  }
  function select(ray:T.Raycaster,act:(a:PanelAction)=>void){

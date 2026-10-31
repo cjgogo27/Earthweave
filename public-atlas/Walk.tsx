@@ -19,12 +19,13 @@ export default function Walk({place,onClose}:{place:PlaceId;onClose:()=>void}){
  const soundLabel=useRef(sound);soundLabel.current=sound;
  const toggleSound=async()=>{
   if(audioBusy.current)return;
-  if(audio.current){audio.current.close();audio.current=null;setSound("off");return;}
+  if(audio.current?.ctx.state==="running"){audio.current.close();audio.current=null;setSound("off");return;}
   audioBusy.current=true;
   let engine:Soundscape|undefined;
-  try{engine=new Soundscape(place);audio.current=engine;await engine.ctx.resume();if(audio.current===engine){engine.level(volume.current);setSound("on");}}
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try{engine=audio.current??new Soundscape(place);audio.current=engine;await Promise.race([engine.ctx.resume(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("Audio activation timeout")),3500);})]);if(audio.current===engine){engine.level(volume.current);setSound("on");}}
   catch{if(audio.current===engine||!engine){engine?.close();audio.current=null;setSound("error");}}
-  finally{audioBusy.current=false}
+  finally{clearTimeout(timer);audioBusy.current=false}
  };
  const sync=()=>{const s=state.current,c=climate(s.day,s.weather);setMode(old=>old.light===c.light&&old.weather===c.weather&&old.speed===s.speed&&old.moving===s.moving?old:{light:c.light,weather:c.weather,speed:s.speed,moving:s.moving});};
  const cycleSpeed=()=>{const s=state.current;s.speed=s.speed===1?4:s.speed===4?0:1;sync()};
@@ -102,12 +103,13 @@ export default function Walk({place,onClose}:{place:PlaceId;onClose:()=>void}){
     menuClock+=wall;
     if(panel.mesh.visible&&menuClock>.12){menuClock=0;
      const zh=language==="zh",soundOn=audio.current?.ctx.state==="running";
-     panel.draw(zh?"环境控制":"World controls",zh?"扳机选择 · 握把召回面板":"Trigger: select  /  Grip: recall panel",[
-      audioBusy.current?(zh?"声音：正在开启":"Sound: starting"):soundOn?(zh?"声音：开 · 点击静音":"Sound on · Mute"):soundLabel.current==="error"?(zh?"重试声音 · 也可在进入 VR 前开启":"Retry sound · or enable before VR"):(zh?"声音：关 · 点击开启":"Sound off · Enable"),
-      (zh?"光照：":"Light: ")+(zh?["白昼","黄昏","月夜","黎明"]:["Day","Dusk","Night","Dawn"])[env.light],
-      (zh?"天气：":"Weather: ")+(zh?["晴","多云","雨","雨后"]:["Clear","Cloudy","Rain","Clearing"])[env.weather],
-      (zh?"环境循环：":"World cycle: ")+(s.speed?s.speed+"×":zh?"暂停":"Paused"),zh?"收起面板":"Hide panel"
-     ]);
+     panel.draw(zh?"环境控制":"World controls",zh?"扳机选择 · 握把召回面板":"Trigger: select  /  Grip: recall panel",{
+      sound:audioBusy.current?(zh?"声音：正在开启":"Sound: starting"):soundOn?(zh?"声音：开 · 点击静音":"Sound on · Mute"):soundLabel.current==="error"?(zh?"重试声音 · 也可在进入 VR 前开启":"Retry sound · or enable before VR"):(zh?"声音：关 · 点击开启":"Sound off · Enable"),
+      motion:place==="venice"?(s.moving?(zh?"停船":"Stop boat"):(zh?"开船":"Launch boat")):(s.moving?(zh?"停下风车":"Stop windmill"):(zh?"启动风车":"Start windmill")),
+      light:(zh?"光照：":"Light: ")+(zh?["白昼","黄昏","月夜","黎明"]:["Day","Dusk","Night","Dawn"])[env.light],
+      weather:(zh?"天气：":"Weather: ")+(zh?["晴","多云","雨","雨后"]:["Clear","Cloudy","Rain","Clearing"])[env.weather],
+      cycle:(zh?"环境循环：":"World cycle: ")+(s.speed?s.speed+"×":zh?"暂停":"Paused"),hide:zh?"收起面板":"Hide panel"
+     });
     }
    }
    r.render(scene,cam);
@@ -124,7 +126,7 @@ export default function Walk({place,onClose}:{place:PlaceId;onClose:()=>void}){
  <button data-audio aria-pressed={sound==="on"} onClick={()=>void toggleSound()}>{sound==="on"?t("关闭声音","Mute audio"):sound==="error"?t("重试声音","Retry audio"):t("开启声音","Enable audio")}</button>
  {sound==="on"&&<label className="walk-volume">{t("音量","Volume")} <input type="range" min="0" max="1" step=".05" defaultValue={volume.current} onChange={e=>{volume.current=Number(e.target.value);audio.current?.level(volume.current)}}/></label>}
  {sound==="error"&&<span role="status" className="walk-volume">{t("声音未开启，请检查浏览器设置。","Could not start audio. Check browser settings.")}</span>}</div>
- <div className="walk-readout"><small>{t("距起点","OFFSET")}　<span data-walk-position>{metres}</span> m</small><details><summary>{t("操作指南","Controls")}</summary><span>{t("WASD / 方向键行走，拖动转头。靠近发光标记按 E，或点互动按钮。","Move with WASD / arrows; drag to look. Approach a glowing marker and press E or use the action button.")}</span><span>{t("VR：用扳机选择环境面板上的声音、天气和光照，握把可召回面板。摇杆行走，指地按扳机传送，指向标记按扳机互动。","VR: use the trigger on the environment panel for sound, weather and lighting; squeeze the grip to recall it. Move with the stick. Point and trigger to teleport or activate a marker.")}</span></details></div>
+ <div className="walk-readout"><small>{t("距起点","OFFSET")}　<span data-walk-position>{metres}</span> m</small><details><summary>{t("操作指南","Controls")}</summary><span>{t("WASD / 方向键行走，拖动转头。靠近发光标记按 E，或点互动按钮。","Move with WASD / arrows; drag to look. Approach a glowing marker and press E or use the action button.")}</span><span>{t("VR：用扳机选择环境面板上的声音、开船（草地为风车）、天气和光照，握把可召回面板。摇杆行走，指地按扳机传送，指向标记按扳机互动。","VR: use the trigger on the environment panel for sound, the boat or windmill, weather and lighting; squeeze the grip to recall it. Move with the stick. Point and trigger to teleport or activate a marker.")}</span></details></div>
  <div className="walk-pad" aria-label={t("行走方向","Walking controls")}>{[["KeyW","↑","前进","Forward"],["KeyA","←","向左","Left"],["KeyS","↓","后退","Back"],["KeyD","→","向右","Right"]].map(([key,sym,zh,en])=><button key={key} aria-label={t(zh,en)} onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);keys.current.add(key)}} onLostPointerCapture={()=>keys.current.delete(key)} onPointerUp={()=>keys.current.delete(key)} onPointerCancel={()=>keys.current.delete(key)}>{sym}</button>)}</div>
  <div className="walk-action">{err==="xr"&&<small role="alert">{t("无法开启 VR，请检查头显与地面追踪权限。","VR could not start. Check headset and floor tracking permissions.")}</small>}<button disabled={!near} onClick={()=>near&&interact(near)}>{near?"◇ "+action:t("靠近发光标记","Approach a glowing marker")}</button></div></>}
  </div>;
