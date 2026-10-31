@@ -1,6 +1,8 @@
 # 共境 Earthweave
 
-[English](README.en.md) · [在线体验](https://earthweave-world-20261024.open-puppy-9264.chatgpt.site) · [GitHub 源码](https://github.com/cjgogo27/Earthweave) · [部署指南](docs/deployment.md) · [VR 实机清单](docs/vr-test.md)
+[English](README.en.md) · [在线体验](https://cjgogo27.github.io/Earthweave/) · [GitHub 源码](https://github.com/cjgogo27/Earthweave) · [部署指南](docs/deployment.md) · [VR 实机清单](docs/vr-test.md)
+
+**在线入口为 GitHub Pages 公开浏览版**：提供地球、两个全景地点、中英切换和 WebXR。下文的多人上传、导入与管理功能属于可独立部署的完整服务器版。
 
 由大家共同补充的视觉地球：在地球上找到地点，上传照片、全景或视频，或从网络媒体直链导入，再通过电脑、手机或兼容 WebXR 的头显浏览。
 

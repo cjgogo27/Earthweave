@@ -68,7 +68,7 @@ export default function Globe({ scenes, selectedId, onSelect, focus }: GlobeProp
     const earthMaterial = new THREE.MeshPhongMaterial({ color: 0x749b98, shininess: 8, specular: 0x123638 });
     const earth = new THREE.Mesh(new THREE.SphereGeometry(1.6, 96, 64), earthMaterial);
     scene.add(earth);
-    const texture = new THREE.TextureLoader().load("/earth.jpg", loaded => {
+    const texture = new THREE.TextureLoader().load("./earth.jpg", loaded => {
       if (disposed) { loaded.dispose(); return; }
       loaded.colorSpace = THREE.SRGBColorSpace;
       loaded.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);

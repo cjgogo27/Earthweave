@@ -1,6 +1,6 @@
 # Earthweave
 
-[中文](README.md) · [Live site](https://earthweave-world-20261024.open-puppy-9264.chatgpt.site) · [Source on GitHub](https://github.com/cjgogo27/Earthweave) · [Deployment guide](docs/deployment.md) · [VR test checklist](docs/vr-test.md)
+[中文](README.md) · [Live site](https://cjgogo27.github.io/Earthweave/) · [Source on GitHub](https://github.com/cjgogo27/Earthweave) · [Deployment guide](docs/deployment.md) · [VR test checklist](docs/vr-test.md)
 
 A collaborative visual Earth: choose a place, contribute photos, panoramas or videos, or import a direct media URL, then explore on a computer, phone, or WebXR-compatible headset.
 
@@ -99,4 +99,6 @@ After editing `db/schema.ts`, run `npm run db:generate`, review the generated SQ
 
 Original application code is licensed under the [MIT License](LICENSE), `Copyright (c) 2026 Earthweave contributors`. Third-party code retains its own licenses. NASA imagery, Poly Haven CC0 samples, and user media are not relicensed under MIT; see [NOTICE](NOTICE.md).
 
-Maintainer contact: cj3332740@outlook.com. For security reports, see [SECURITY.md](SECURITY.md).
+Maintainer contact: cj3332740@outlook.com. For security reports, see [SECURITY.md](SECURITY.md).
+**The GitHub Pages public atlas supports browsing, two panoramas, language switching and WebXR. Shared uploads and imports require the separately deployed full server.**
+
