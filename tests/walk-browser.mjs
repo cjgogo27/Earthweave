@@ -33,6 +33,12 @@ try{
  window.ewAudible=()=>{const a=window.ewMeter;if(!a)return false;const v=new Float32Array(a.fftSize);a.getFloatTimeDomainData(v);return a.context.state==="running"&&v.some(n=>Math.abs(n)>.0001);};
  `});
  await send("Page.navigate",{url});await until("!!document.querySelector('.walk-launch .enter')");
+ await until("Array.from(document.querySelectorAll('main img')).every(i=>i.complete && i.naturalWidth>0)");
+ const firstLoad=await ev("performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.decodedBodySize}))");
+ assert(!firstLoad.some(r=>/\/(media|earth\.jpg)(\/|$)/.test(new URL(r.url).pathname)),"Full scene media must stay off the landing page");
+ const bytes=firstLoad.reduce((s,r)=>s+r.bytes,0);
+ assert(bytes>50000&&bytes<400000,"Unexpected landing resources: "+JSON.stringify(firstLoad));
+ console.log("Cold landing resources (decoded bytes, excluding HTML):",bytes);
  for(const id of ["venice","spruit"]){
   if(id==="spruit")await click("nav button:nth-child(2)");
   await click(".walk-launch .enter");await until("!!document.querySelector('.walk-stage canvas') && !document.querySelector('.walk-action button')?.disabled");
@@ -61,6 +67,10 @@ try{
   await until("window.ewMeter.context.state==='closed'");
   console.log("PASS",id,"audible audio graph, cleanup, time controls, WebGL scene, object, rain, dusk, movement, reset and exit");
  }
+ await click(".activate-globe");await until("!!document.querySelector('.map canvas')");
+ await click(".walk-launch button:nth-child(2)");await until("!!document.querySelector('.ew-viewer canvas')");
+ await until("performance.getEntriesByType('resource').some(r=>r.name.endsWith('/media/spruit.jpg') && r.decodedBodySize>6000000)");
+ console.log("PASS: globe activates on demand; original panorama loads only in viewer.");
  assert.deepEqual(errors,[]);
 }finally{
  try{await send("Browser.close",{},undefined)}catch{child.kill()}

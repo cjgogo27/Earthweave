@@ -2,6 +2,8 @@
 
 The root [MIT License](LICENSE) applies to original Earthweave application code and documentation. It does not replace upstream licenses or relicense photographs, videos, geospatial data, or user contributions. Third-party copyright and permission notices must be retained when redistributing their code or assets.
 
+The small WebP images in `public/previews/` are resized copies of the corresponding NASA map and Poly Haven panoramas described below; the original media and credits are preserved.
+
 ## Bundled visual assets
 
 ### `public/earth.jpg`
