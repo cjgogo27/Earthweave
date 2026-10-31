@@ -32,6 +32,7 @@ jobs:
           for attempt in {1..15}; do curl -fsS http://localhost:4173/Earthweave/ >/dev/null && break; sleep 1; done
           google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=6000 --dump-dom http://localhost:4173/Earthweave/ > "$RUNNER_TEMP/atlas.html"
           grep -F '进入全景' "$RUNNER_TEMP/atlas.html"
+          node tests/walk-browser.mjs http://localhost:4173/Earthweave/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

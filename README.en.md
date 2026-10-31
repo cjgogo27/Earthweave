@@ -2,7 +2,7 @@
 
 [中文](README.md) · [Live site](https://cjgogo27.github.io/Earthweave/) · [Source on GitHub](https://github.com/cjgogo27/Earthweave) · [Deployment guide](docs/deployment.md) · [VR test checklist](docs/vr-test.md)
 
-**The GitHub Pages public atlas supports browsing, two panoramas, language switching and WebXR. Shared uploads and imports require the separately deployed full server.**
+**The GitHub Pages public atlas includes two walkable, simulated 3D environments, photographic panoramas, language switching and WebXR. Move with WASD or on-screen arrows, drag to look, and approach markers to operate the boat or windmill, change weather and adjust daylight. VR controllers support point-to-teleport. These scenes are authored interpretations, not reconstructions. Shared uploads and imports require the separately deployed full server.**
 
 A collaborative visual Earth: choose a place, contribute photos, panoramas or videos, or import a direct media URL, then explore on a computer, phone, or WebXR-compatible headset.
 
