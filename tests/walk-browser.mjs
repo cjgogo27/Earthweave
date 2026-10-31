@@ -15,7 +15,7 @@ child.stdio[4].setEncoding("utf8");child.stdio[4].on("data",chunk=>{buffer+=chun
 const send=(method,params={},sid=sessionId)=>new Promise((ok,bad)=>{const id=++seq;const timer=setTimeout(()=>{pending.delete(id);bad(Error("CDP timeout "+method))},15000);pending.set(id,msg=>{pending.delete(id);clearTimeout(timer);msg.error?bad(Error(msg.error.message)):ok(msg.result)});
  child.stdio[3].write(JSON.stringify({id,method,params,sessionId:sid})+"\0");});
 const sleep=n=>new Promise(ok=>setTimeout(ok,n));
-const ev=async(expression)=>{const v=await send("Runtime.evaluate",{expression,returnByValue:true});if(v.exceptionDetails)throw Error(v.exceptionDetails.text);return v.result.value};
+const ev=async(expression)=>{const v=await send("Runtime.evaluate",{expression,returnByValue:true,userGesture:true});if(v.exceptionDetails)throw Error(v.exceptionDetails.text);return v.result.value};
 const until=async(expression)=>{for(let i=0;i<75;i++){if(await ev(expression))return;await sleep(180)}throw Error("Not reached: "+expression)};
 const click=selector=>ev("document.querySelector("+JSON.stringify(selector)+").click()");
 const position="document.querySelector('[data-walk-position]')?.textContent";
@@ -23,10 +23,22 @@ try{
  const tab=(await send("Target.createTarget",{url:"about:blank"})).targetId;
  sessionId=(await send("Target.attachToTarget",{targetId:tab,flatten:true})).sessionId;
  await send("Page.enable");await send("Runtime.enable");await send("Log.enable");
+ await send("Page.addScriptToEvaluateOnNewDocument",{source:`
+ // Monitor the actual graph feeding the browser's destination, without replacing the audio engine.
+ const original=AudioNode.prototype.connect;
+ AudioNode.prototype.connect=function(to,...rest){
+  if(to instanceof AudioDestinationNode){const meter=this.context.createAnalyser();original.call(this,meter);window.ewMeter=meter;}
+  return original.call(this,to,...rest);
+ };
+ window.ewAudible=()=>{const a=window.ewMeter;if(!a)return false;const v=new Float32Array(a.fftSize);a.getFloatTimeDomainData(v);return a.context.state==="running"&&v.some(n=>Math.abs(n)>.0001);};
+ `});
  await send("Page.navigate",{url});await until("!!document.querySelector('.walk-launch .enter')");
  for(const id of ["venice","spruit"]){
   if(id==="spruit")await click("nav button:nth-child(2)");
   await click(".walk-launch .enter");await until("!!document.querySelector('.walk-stage canvas') && !document.querySelector('.walk-action button')?.disabled");
+  await click("[data-audio]");await until("window.ewAudible()");
+  await click("[data-cycle]");await until("document.querySelector('[data-cycle]').textContent.includes('4×')");
+  await click("[data-cycle]");await until("document.querySelector('[data-cycle]').textContent.includes('暂停')");
   await send("Input.dispatchKeyEvent",{type:"keyDown",key:"e",code:"KeyE"});
   await send("Input.dispatchKeyEvent",{type:"keyUp",key:"e",code:"KeyE"});
   await until("document.querySelector('.walk-action button')?.textContent.includes("+JSON.stringify(id==="venice"?"停船":"停下风车")+")");
@@ -44,8 +56,10 @@ try{
   await send("Emulation.setTouchEmulationEnabled",{enabled:false});
   await click(".walk-tools button:nth-child(3)");await until(position+" === '0, 0'");
   if(process.env.WALK_SCREENSHOT_DIR){await click(".walk-tools button:nth-child(2)");const shot=await send("Page.captureScreenshot",{format:"jpeg",quality:75});await writeFile(path.join(process.env.WALK_SCREENSHOT_DIR,id+".jpg"),Buffer.from(shot.data,"base64"));}
+  if(id==="venice"){await click("[data-audio]");await until("window.ewMeter.context.state==='closed'");}
   await click(".walk-heading button");await until("!document.querySelector('.walk')");
-  console.log("PASS",id,"WebGL scene, object, rain, dusk, movement, reset and exit");
+  await until("window.ewMeter.context.state==='closed'");
+  console.log("PASS",id,"audible audio graph, cleanup, time controls, WebGL scene, object, rain, dusk, movement, reset and exit");
  }
  assert.deepEqual(errors,[]);
 }finally{

@@ -1,4 +1,6 @@
 import * as T from "three";
+import {walkers} from "./walkers";
+import {climate} from "./environment";
 
 export type PlaceId="venice"|"spruit";
 export type Station="weather"|"motion"|"light";
@@ -105,23 +107,42 @@ export function makeWorld(scene:T.Scene,place:PlaceId){
  rainGeo.setAttribute("position",new T.BufferAttribute(drops,3));const rain=new T.Points(rainGeo,rains);scene.add(rain);
  const ripples=new T.InstancedMesh(geometry.sphere,new T.MeshBasicMaterial({color:"#81bbb5"}),55);
  if(canal)scene.add(ripples);else ripples.dispose();
- const zenith=[0x538db3,0x615b91,0x101c3d],horizon=[0xffdfb5,0xf9ae78,0x64718d];
+ const crowd=walkers(scene,place,(x,z)=>floorAt(place,x,z));
+ const zenith=[0x538db3,0x674f81,0x101b39,0x596b98].map(c=>new T.Color(c));
+ const horizon=[0xffdfb5,0xffaa70,0x394667,0xfab7aa].map(c=>new T.Color(c));
+ const top=new T.Color(),edge=new T.Color(),overcast=new T.Color(),smoke=new T.Color();
+ const starGeo=new T.BufferGeometry(),dots=new Float32Array(900);
+ for(let i=0;i<dots.length;i+=3){const a=rand()*Math.PI*2,b=.1+rand()*.89,v=Math.sqrt(1-b*b);dots.set([125*v*Math.cos(a),125*b,125*v*Math.sin(a)],i);}
+ starGeo.setAttribute("position",new T.BufferAttribute(dots,3));
+ const starMat=new T.PointsMaterial({color:0xf8f6df,transparent:true,size:.19,fog:false,depthWrite:false});
+ scene.add(new T.Points(starGeo,starMat));
+ const windows=new T.InstancedMesh(geometry.box,new T.MeshBasicMaterial({color:0xffcd87,transparent:true,opacity:0}),canal?20:0);
+ if(canal){for(let i=0;i<20;i++){const side=i%2?1:-1;dummy.position.set(side>0?7.96:-18.96,2.90,-42+(i*5%14)*6.4+(i%3-1)*1.93);dummy.scale.set(.04,1.09,.64);dummy.rotation.set(0,0,0);dummy.updateMatrix();windows.setMatrixAt(i,dummy.matrix);}}scene.add(windows);
  let sim=0,clock=0;
- function update(dt:number,day:number,wet:boolean,moving:boolean){
+ function update(dt:number,phase:number,weather:number,moving:boolean){
   clock+=dt;if(moving)sim+=dt;
-  const q=skyMat.uniforms,delta=Math.min(1,dt*3);
-  const top=new T.Color(wet?0x586975:zenith[day]),edge=new T.Color(wet?0x9caaaf:horizon[day]);
+  const env=climate(phase,weather),{i,j,t}=env.sun,q=skyMat.uniforms,delta=Math.min(1,dt*3);
+  top.copy(zenith[i]).lerp(zenith[j],t);edge.copy(horizon[i]).lerp(horizon[j],t);
+  overcast.set(0x72808b).multiplyScalar(.19+.81*env.daylight);
+  smoke.set(0xb2bdc5).multiplyScalar(.17+.83*env.daylight);
+  top.lerp(overcast,env.cloud*.82);edge.lerp(smoke,env.cloud*.85);
   q.zenith.value.lerp(top,delta);q.horizon.value.lerp(edge,delta);
-  q.sunDir.value.set(-.56,day===0?.58:day===1?.095:.43,-.82).normalize();q.sunColor.value.set(wet?0x6e757a:day===2?0xabbdda:0xffe6aa);
-  (scene.fog as T.FogExp2).color.copy(q.horizon.value);(scene.fog as T.FogExp2).density=wet?.029:.011;
-  skyMat.uniformsNeedUpdate=true;sun.position.copy(q.sunDir.value).multiplyScalar(50);sun.intensity=wet?.7:day===2?.27:2;light.intensity=day===2?.65:1.7;
-  cloud.rotation.y=clock*.004;rain.visible=wet;
-  if(wet){for(let i=1;i<drops.length;i+=3)drops[i]=(drops[i]-dt*9+13)%13;rainGeo.attributes.position.needsUpdate=true;}
+  const a=phase*Math.PI*2;
+  q.sunDir.value.set(-.65*Math.cos(a)+Math.sin(a),.77*Math.cos(a),-.72).normalize();
+  q.sunColor.value.set(0xffe6aa).multiplyScalar(1-.92*env.cloud);
+  (scene.fog as T.FogExp2).color.copy(q.horizon.value);(scene.fog as T.FogExp2).density=.009+.013*env.cloud+.01*env.rain;
+  sun.position.copy(q.sunDir.value).multiplyScalar(50);sun.position.y=Math.max(4,sun.position.y);
+  sun.intensity=.22+1.8*env.daylight*(1-.7*env.cloud);light.intensity=.38+1.32*env.daylight;
+  starMat.opacity=(1-env.daylight)**3*(1-env.cloud);windows.material.opacity=(1-env.daylight)**2*.95;
+  crowd.update(dt,env.rain);cloud.rotation.y=clock*(.004)+.02*Math.sin(clock*.1);
+  rain.visible=env.rain>.015;rains.opacity=env.rain*.88;
+  if(rain.visible){for(let i=1;i<drops.length;i+=3)drops[i]=(drops[i]-dt*9+13)%13;rainGeo.attributes.position.needsUpdate=true;}
   beacons.forEach((b,i)=>{b.rotation.y=clock*.7;b.position.y=1.58+.07*Math.sin(clock*2+i);});
   if(canal){boat.position.z=2+14*Math.sin(sim*.17);boat.position.y=-.47+.045*Math.sin(clock*2);boat.rotation.z=.025*Math.sin(clock*1.4);
    for(let i=0;i<55;i++){dummy.position.set(-12.8+(i*3.293)%10.4,-.636,-35+(i*3.81+clock*.45)%70);dummy.scale.set(.16+.1*Math.sin(i+clock),.007,.46);dummy.rotation.set(0,0,0);dummy.updateMatrix();ripples.setMatrixAt(i,dummy.matrix);}ripples.instanceMatrix.needsUpdate=true;
   }else sails.rotation.z=sim*1.35;
+  return env;
  }
- update(1,0,false,false);
- return {update,beacons,dispose(){const g=new Set<T.BufferGeometry>(Object.values(geometry)),m=new Set<T.Material>([water,ripples.material as T.Material]);scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Points){g.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material])m.add(mat);if(o instanceof T.InstancedMesh)o.dispose();}});g.forEach(it=>it.dispose());m.forEach(it=>it.dispose());}};
+ update(1,0,0,false);
+ return {update,beacons,people:crowd.people,dispose(){const g=new Set<T.BufferGeometry>(Object.values(geometry)),m=new Set<T.Material>([water,ripples.material as T.Material]);scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Points){g.add(o.geometry);for(const mat of Array.isArray(o.material)?o.material:[o.material])m.add(mat);if(o instanceof T.InstancedMesh)o.dispose();}});g.forEach(it=>it.dispose());m.forEach(it=>it.dispose());}};
 }
